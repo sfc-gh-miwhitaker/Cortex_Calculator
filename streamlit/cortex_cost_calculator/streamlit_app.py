@@ -28,16 +28,16 @@ def fetch_data_from_views(lookback_days=30):
     """Fetch data directly from Snowflake views"""
     query = f"""
     SELECT 
-        usage_date AS date,
+        date,
         service_type,
         daily_unique_users,
         total_operations,
         total_credits,
         credits_per_user,
         credits_per_operation
-    FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_DAILY_SUMMARY
-    WHERE usage_date >= DATEADD('day', -{lookback_days}, CURRENT_DATE())
-    ORDER BY usage_date DESC
+    FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT
+    WHERE date >= DATEADD('day', -{lookback_days}, CURRENT_DATE())
+    ORDER BY date DESC
     """
     return session.sql(query).to_pandas()
 

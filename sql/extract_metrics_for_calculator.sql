@@ -15,15 +15,17 @@
 -- ============================================================================
 -- Main Extraction Query
 -- ============================================================================
+-- Note: ROUND() functions prevent scientific notation in CSV exports
+--       This ensures consistent display between CSV and Streamlit UI
 
 SELECT 
     date,
     service_type,
     daily_unique_users,
     total_operations,
-    total_credits,
-    credits_per_user,
-    credits_per_operation
+    ROUND(total_credits, 8) AS total_credits,
+    ROUND(credits_per_user, 8) AS credits_per_user,
+    ROUND(credits_per_operation, 12) AS credits_per_operation
 FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT
 WHERE date >= DATEADD('day', -90, CURRENT_DATE())  -- Default 90 days, adjust as needed
 ORDER BY date DESC, total_credits DESC;
@@ -56,8 +58,8 @@ FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT;
 SELECT 
     service_type,
     COUNT(DISTINCT date) AS days_with_data,
-    SUM(total_credits) AS total_credits,
-    AVG(daily_unique_users) AS avg_daily_users
+    ROUND(SUM(total_credits), 8) AS total_credits,
+    ROUND(AVG(daily_unique_users), 2) AS avg_daily_users
 FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT
 GROUP BY service_type
 ORDER BY total_credits DESC;
@@ -66,7 +68,7 @@ ORDER BY total_credits DESC;
 SELECT 
     date,
     service_type,
-    total_credits
+    ROUND(total_credits, 8) AS total_credits
 FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT
 WHERE date >= DATEADD('day', -7, CURRENT_DATE())
 ORDER BY date DESC, total_credits DESC;
@@ -75,7 +77,7 @@ ORDER BY date DESC, total_credits DESC;
 -- Export Instructions for SE:
 -- ============================================================================
 -- 
--- STEP 1: Run main extraction query (lines 16-23)
+-- STEP 1: Run main extraction query (lines 21-31)
 -- STEP 2: In Snowflake UI, click "Download" button → Choose CSV
 -- STEP 3: Save file as: "customer_name_cortex_usage_YYYYMMDD.csv"
 -- 

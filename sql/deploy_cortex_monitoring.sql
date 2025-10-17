@@ -268,7 +268,7 @@ SELECT
     ROUND(credits_per_user * 30, 2) AS projected_monthly_cost_per_user,
     ROUND(total_credits * 30, 2) AS projected_monthly_total_credits
 FROM V_CORTEX_DAILY_SUMMARY
-WHERE usage_date >= DATEADD('day', -90, CURRENT_TIMESTAMP())
+-- No date filter here - let the extraction query control the date range
 ORDER BY date DESC, total_credits DESC;
 
 -- ============================================================================
