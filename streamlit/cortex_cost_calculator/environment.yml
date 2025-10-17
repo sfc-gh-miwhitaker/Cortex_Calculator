@@ -1,0 +1,24 @@
+# Snowflake environment descriptor for Streamlit in Snowflake (SiS)
+# This file specifies Python packages needed for the Cortex AI Cost Calculator
+
+name: cortex_cost_calculator
+channels:
+  - snowflake
+
+dependencies:
+  # Streamlit is pre-installed in SiS - specify version for compatibility
+  - streamlit>=1.28.0
+  
+  # Snowflake Snowpark is pre-installed in SiS
+  - snowflake-snowpark-python>=1.9.0
+  
+  # Data manipulation - commonly pre-installed but specify for clarity
+  - pandas>=2.0.0
+  - numpy>=1.24.0
+  
+  # Visualization
+  - plotly>=5.17.0
+  
+  # Optional: For additional data export capabilities
+  - openpyxl>=3.1.0
+

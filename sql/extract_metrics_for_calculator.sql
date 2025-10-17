@@ -1,0 +1,116 @@
+-- ============================================================================
+-- Extract Metrics for Cost Calculator
+-- ============================================================================
+-- Purpose: SE runs this in CUSTOMER'S Snowflake account to extract usage data
+-- Output: CSV file to upload into YOUR Streamlit calculator
+-- ============================================================================
+
+-- INSTRUCTIONS FOR SOLUTION ENGINEERS:
+-- 1. Run this query in the CUSTOMER'S Snowflake account
+-- 2. Click "Download" and save as CSV
+-- 3. Upload CSV to YOUR Streamlit calculator (in your Snowflake account)
+-- 4. Calculator will analyze and generate credit projections
+-- 5. Export summary for sales/pricing team
+
+-- ============================================================================
+-- Main Extraction Query
+-- ============================================================================
+
+SELECT 
+    date,
+    service_type,
+    daily_unique_users,
+    total_operations,
+    total_credits,
+    credits_per_user,
+    credits_per_operation
+FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT
+WHERE date >= DATEADD('day', -90, CURRENT_DATE())  -- Default 90 days, adjust as needed
+ORDER BY date DESC, total_credits DESC;
+
+-- ============================================================================
+-- Expected Output Columns:
+-- ============================================================================
+-- date                     - Usage date (YYYY-MM-DD)
+-- service_type             - Cortex Analyst, Search, Functions, Document AI
+-- daily_unique_users       - Number of unique users (where available)
+-- total_operations         - Requests, tokens, messages, pages processed
+-- total_credits            - Actual Snowflake credits consumed
+-- credits_per_user         - Average credits per user per day
+-- credits_per_operation    - Average credits per operation
+
+-- ============================================================================
+-- Data Quality Checks (Optional - Run Before Extraction)
+-- ============================================================================
+
+-- Check 1: Verify data exists
+SELECT 
+    COUNT(*) AS total_rows,
+    MIN(date) AS earliest_date,
+    MAX(date) AS latest_date,
+    COUNT(DISTINCT service_type) AS service_count
+FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT;
+-- Expected: Rows > 0, service_count between 1-4
+
+-- Check 2: Service breakdown
+SELECT 
+    service_type,
+    COUNT(DISTINCT date) AS days_with_data,
+    SUM(total_credits) AS total_credits,
+    AVG(daily_unique_users) AS avg_daily_users
+FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT
+GROUP BY service_type
+ORDER BY total_credits DESC;
+
+-- Check 3: Recent activity (last 7 days)
+SELECT 
+    date,
+    service_type,
+    total_credits
+FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT
+WHERE date >= DATEADD('day', -7, CURRENT_DATE())
+ORDER BY date DESC, total_credits DESC;
+
+-- ============================================================================
+-- Export Instructions for SE:
+-- ============================================================================
+-- 
+-- STEP 1: Run main extraction query (lines 16-23)
+-- STEP 2: In Snowflake UI, click "Download" button → Choose CSV
+-- STEP 3: Save file as: "customer_name_cortex_usage_YYYYMMDD.csv"
+-- 
+-- STEP 4: Go to YOUR Snowflake account
+-- STEP 5: Open YOUR Streamlit calculator
+-- STEP 6: Upload the CSV file
+-- 
+-- STEP 7: Calculator will show:
+--         - Historical usage analysis
+--         - Cost projections (multiple scenarios)
+--         - Credit estimates by service
+-- 
+-- STEP 8: Export credit summary:
+--         - Download "Credit Estimate Summary" spreadsheet
+--         - Share with sales/pricing team for proposal creation
+--
+-- ============================================================================
+-- Troubleshooting:
+-- ============================================================================
+--
+-- Q: No data returned?
+-- A: Check if customer has used Cortex AI recently (needs 7-14 days minimum)
+--    Try: SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.METERING_DAILY_HISTORY
+--         WHERE service_type = 'AI_SERVICES' ORDER BY usage_date DESC LIMIT 10;
+--
+-- Q: View doesn't exist?
+-- A: Deploy monitoring first: @sql/deploy_cortex_monitoring.sql
+--
+-- Q: Permission denied?
+-- A: Need IMPORTED PRIVILEGES on SNOWFLAKE database
+--    Run as ACCOUNTADMIN: GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE 
+--                         TO ROLE <YOUR_ROLE>;
+--
+-- Q: Wrong date range?
+-- A: Change line 28: DATEADD('day', -90, ...) to -14, -30, -60, -180, etc.
+--
+-- ============================================================================
+
