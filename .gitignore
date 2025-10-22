@@ -1,12 +1,30 @@
+# Cortex AI Cost Calculator - Git Ignore
+# Excludes temporary files, internal documentation, and tool artifacts
+
+# ============================================================================
+# Cursor IDE Internal Files
+# ============================================================================
+.cursor/
+.cursorrules
+.cursor_backup/
+*.cursor
+
+# ============================================================================
+# Internal Project Documentation (not for commit)
+# ============================================================================
+.cursornotes/
+*.draft.md
+*.notes.md
+*.internal.md
+
+# ============================================================================
 # Python
+# ============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
-venv/
-ENV/
 build/
 develop-eggs/
 dist/
@@ -19,38 +37,91 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual environments
-.venv
 venv/
 ENV/
+env/
+.venv
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# ============================================================================
+# Streamlit
+# ============================================================================
+.streamlit/
+streamlit/.streamlit/
 
-# OS
+# ============================================================================
+# Data Files (Customer Data - Do Not Commit)
+# ============================================================================
+*.csv
+*.xlsx
+*.xls
+*.parquet
+*_usage_*.csv
+customer_*.csv
+metrics_*.csv
+
+# Allow sample/template files
+!*_template.csv
+!*_example.csv
+
+# ============================================================================
+# Logs and Temporary Files
+# ============================================================================
+*.log
+*.tmp
+*.temp
 .DS_Store
 Thumbs.db
+*~
+.*.swp
+.*.swo
 
-# Credentials
-*.env
-.env.*
+# ============================================================================
+# IDE and Editor Files
+# ============================================================================
+.vscode/
+.idea/
+*.sublime-*
+*.code-workspace
+
+# ============================================================================
+# OS Files
+# ============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ============================================================================
+# Test and Development
+# ============================================================================
+test_output/
+scratch/
+sandbox/
+*.test.sql
+*.dev.sql
+
+# ============================================================================
+# Documentation Build Artifacts
+# ============================================================================
+docs/_build/
+docs/.doctrees/
+site/
+
+# ============================================================================
+# Snowflake Temporary Files
+# ============================================================================
+.snowflake/
+snowflake_connection.json
 credentials.json
-config.json
-
-# Internal notes
-.cursornotes/
-
-# Streamlit
-.streamlit/secrets.toml
-
-# Logs
-*.log
-

@@ -13,8 +13,9 @@
 -- 5. Export summary for sales/pricing team
 
 -- ============================================================================
--- Main Extraction Query
+-- Main Extraction Query - OPTION 1 (Real-time data)
 -- ============================================================================
+-- Use V_CORTEX_COST_EXPORT for most up-to-date data (queries ACCOUNT_USAGE live)
 -- Note: ROUND() functions prevent scientific notation in CSV exports
 --       This ensures consistent display between CSV and Streamlit UI
 
@@ -26,9 +27,30 @@ SELECT
     ROUND(total_credits, 8) AS total_credits,
     ROUND(credits_per_user, 8) AS credits_per_user,
     ROUND(credits_per_operation, 12) AS credits_per_operation
-FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT
+FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_CORTEX_COST_EXPORT
 WHERE date >= DATEADD('day', -90, CURRENT_DATE())  -- Default 90 days, adjust as needed
 ORDER BY date DESC, total_credits DESC;
+
+-- ============================================================================
+-- Main Extraction Query - OPTION 2 (Snapshot data - faster)
+-- ============================================================================
+-- Use V_CORTEX_USAGE_HISTORY for faster queries (pre-aggregated snapshots)
+-- Note: Data is captured daily at 3 AM, so may be 1 day behind current usage
+/*
+SELECT 
+    date,
+    service_type,
+    daily_unique_users,
+    total_operations,
+    ROUND(total_credits, 8) AS total_credits,
+    ROUND(credits_per_user, 8) AS credits_per_user,
+    ROUND(credits_per_operation, 12) AS credits_per_operation,
+    ROUND(credits_7d_ago, 8) AS credits_7d_ago,
+    credits_wow_growth_pct
+FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_CORTEX_USAGE_HISTORY
+WHERE date >= DATEADD('day', -90, CURRENT_DATE())
+ORDER BY date DESC, total_credits DESC;
+*/
 
 -- ============================================================================
 -- Expected Output Columns:
@@ -51,7 +73,7 @@ SELECT
     MIN(date) AS earliest_date,
     MAX(date) AS latest_date,
     COUNT(DISTINCT service_type) AS service_count
-FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT;
+FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_CORTEX_COST_EXPORT;
 -- Expected: Rows > 0, service_count between 1-4
 
 -- Check 2: Service breakdown
@@ -60,7 +82,7 @@ SELECT
     COUNT(DISTINCT date) AS days_with_data,
     ROUND(SUM(total_credits), 8) AS total_credits,
     ROUND(AVG(daily_unique_users), 2) AS avg_daily_users
-FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT
+FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_CORTEX_COST_EXPORT
 GROUP BY service_type
 ORDER BY total_credits DESC;
 
@@ -69,7 +91,7 @@ SELECT
     date,
     service_type,
     ROUND(total_credits, 8) AS total_credits
-FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT
+FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_CORTEX_COST_EXPORT
 WHERE date >= DATEADD('day', -7, CURRENT_DATE())
 ORDER BY date DESC, total_credits DESC;
 
@@ -99,7 +121,7 @@ ORDER BY date DESC, total_credits DESC;
 -- ============================================================================
 --
 -- Q: No data returned?
--- A: Check if customer has used Cortex AI recently (needs 7-14 days minimum)
+-- A: Check if customer has used Cortex recently (needs 7-14 days minimum)
 --    Try: SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.METERING_DAILY_HISTORY
 --         WHERE service_type = 'AI_SERVICES' ORDER BY usage_date DESC LIMIT 10;
 --

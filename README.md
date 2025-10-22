@@ -1,8 +1,22 @@
-# Snowflake Cortex AI Cost Calculator
+# Snowflake Cortex Cost Calculator
 
-**Monitor Cortex AI usage and forecast future costs with confidence.**
+**Monitor Cortex usage and forecast future costs with confidence.**
 
-A professional toolkit for tracking Snowflake Cortex AI service consumption and generating accurate cost projections. Perfect for Solutions Engineers during scoping exercises and for customers managing their AI workload budgets.
+A professional toolkit for tracking Snowflake Cortex service consumption and generating accurate cost projections. Perfect for Solutions Engineers during scoping exercises and for customers managing their AI workload budgets.
+
+---
+
+## 👋 First Time Here?
+
+**Follow these 3 steps:**
+
+1. **Read:** `help/GETTING_STARTED.md` - Complete getting started guide (5 min read)
+2. **Deploy:** `sql/deploy_cortex_monitoring.sql` - Deploy monitoring views (5 min)
+3. **Launch:** `streamlit/cortex_cost_calculator/streamlit_app.py` - Deploy cost calculator (5 min)
+
+Takes 15 minutes total from zero to working calculator.
+
+**Or** jump straight to the deployment scripts if you prefer hands-on learning.
 
 ---
 
@@ -17,7 +31,7 @@ A professional toolkit for tracking Snowflake Cortex AI service consumption and 
 - **Per-Customer Analysis:** 5-10 minutes
 
 ### What You Get
-- ✅ Real-time monitoring of all Cortex AI services
+- ✅ Real-time monitoring of all Cortex services
 - ✅ Historical usage analysis with interactive charts
 - ✅ Multi-scenario cost projections
 - ✅ Export-ready credit estimates for proposals
@@ -73,8 +87,8 @@ A professional toolkit for tracking Snowflake Cortex AI service consumption and 
 
 **What this creates:**
 - Database: `SNOWFLAKE_EXAMPLE`
-- Schema: `CORTEX_AI_USAGE`
-- 9 monitoring views tracking all Cortex AI usage
+- Schema: `CORTEX_USAGE`
+- 9 monitoring views tracking all Cortex usage
 
 **Time:** < 1 minute  
 **Wait period:** 7-14 days for meaningful usage data
@@ -130,7 +144,7 @@ In **YOUR** Snowflake account:
 
 **Self-Service Deployment**
 
-Deploy both monitoring and calculator in your own Snowflake account to track and forecast Cortex AI costs continuously.
+Deploy both monitoring and calculator in your own Snowflake account to track and forecast Cortex costs continuously.
 
 #### Step 1: Deploy Monitoring
 
@@ -145,15 +159,15 @@ Deploy both monitoring and calculator in your own Snowflake account to track and
 
 **What gets created:**
 - Database: `SNOWFLAKE_EXAMPLE`
-- Schema: `CORTEX_AI_USAGE`
-- 9 views tracking Cortex AI usage
+- Schema: `CORTEX_USAGE`
+- 9 views tracking Cortex usage
 
 #### Step 2: Deploy Calculator
 
 1. Navigate: **Streamlit** > **Apps** > **"+ Streamlit App"**
 2. Configure:
    - **Name:** `CORTEX_COST_CALCULATOR`
-   - **Location:** `SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE`
+   - **Location:** `SNOWFLAKE_EXAMPLE.CORTEX_USAGE`
    - **Warehouse:** Select warehouse
 3. Copy code from `streamlit_app.py`
 4. Add packages from `environment.yml`
@@ -172,9 +186,9 @@ Deploy both monitoring and calculator in your own Snowflake account to track and
 
 ## What This Tool Does
 
-### Cortex AI Services Tracked
+### Cortex Services Tracked
 
-This tool monitors all Snowflake Cortex AI services:
+This tool monitors all Snowflake Cortex services:
 
 | Service | Description | Documentation |
 |---------|-------------|---------------|
@@ -203,6 +217,8 @@ This tool monitors all Snowflake Cortex AI services:
 - Custom scenario builder
 - 3, 6, 12, or 24-month projections
 - Variance ranges for confidence intervals
+- **NEW:** Cost per User Calculator - estimate per-user costs based on usage patterns
+- **NEW:** Budget Capacity Calculator - determine how many users fit within budget
 
 #### 📊 Scenario Comparison
 - Side-by-side scenario analysis
@@ -222,7 +238,7 @@ This tool monitors all Snowflake Cortex AI services:
 
 ### Required
 
-✅ **Snowflake account** with Cortex AI usage (ideally 7-14 days of history)
+✅ **Snowflake account** with Cortex usage (ideally 7-14 days of history)
 
 ✅ **One of the following roles:**
 - `ACCOUNTADMIN` role, OR
@@ -267,7 +283,7 @@ GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE <YOUR_ROLE>;
 
 **What happens:**
 1. Creates database `SNOWFLAKE_EXAMPLE` (if not exists)
-2. Creates schema `CORTEX_AI_USAGE` (if not exists)
+2. Creates schema `CORTEX_USAGE` (if not exists)
 3. Creates 9 views querying `SNOWFLAKE.ACCOUNT_USAGE`
 4. Runs validation queries to verify deployment
 
@@ -291,10 +307,10 @@ GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE <YOUR_ROLE>;
 | `V_CORTEX_SEARCH_SERVING_DETAIL` | Search serving | Hourly detail | ❌ No |
 | `V_CORTEX_FUNCTIONS_DETAIL` | Functions by model | Hourly aggregate | ❌ No |
 | `V_CORTEX_FUNCTIONS_QUERY_DETAIL` | Functions by query | Per query | ✅ Yes (query_id) |
-| `V_DOCUMENT_AI_DETAIL` | Document processing | Per request | ✅ Yes (query_id) |
+| `V_DOCUMENT_DETAIL` | Document processing | Per request | ✅ Yes (query_id) |
 | `V_CORTEX_DAILY_SUMMARY` | **Rollup across all services** | Daily | Derived |
 | `V_CORTEX_COST_EXPORT` | **Pre-formatted for calculator** | Daily | Derived |
-| `V_METERING_AI_SERVICES` | High-level validation | Daily | ❌ No |
+| `V_METERING_SERVICES` | High-level validation | Daily | ❌ No |
 
 **Primary views for analysis:** `V_CORTEX_DAILY_SUMMARY` and `V_CORTEX_COST_EXPORT`
 
@@ -306,7 +322,7 @@ GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE <YOUR_ROLE>;
 2. Navigate: **Projects** > **Streamlit** > **Apps** > **"+ Streamlit App"**
 3. Configure app:
    - **App name:** `CORTEX_COST_CALCULATOR`
-   - **Location:** `SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE` (or your preferred database/schema)
+   - **Location:** `SNOWFLAKE_EXAMPLE.CORTEX_USAGE` (or your preferred database/schema)
    - **Warehouse:** Select appropriate warehouse (SMALL is fine)
 4. **Code editor:** Copy entire contents of `streamlit_app.py`
 5. **Packages:** Copy contents of `environment.yml` to package section
@@ -318,15 +334,15 @@ GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE <YOUR_ROLE>;
 
 ```sql
 -- 1. Create stage
-CREATE STAGE IF NOT EXISTS SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.STREAMLIT_STAGE;
+CREATE STAGE IF NOT EXISTS SNOWFLAKE_EXAMPLE.CORTEX_USAGE.STREAMLIT_STAGE;
 
 -- 2. Upload files (run in terminal)
--- snow stage put file://streamlit_app.py @SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.STREAMLIT_STAGE
--- snow stage put file://environment.yml @SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.STREAMLIT_STAGE
+-- snow stage put file://streamlit_app.py @SNOWFLAKE_EXAMPLE.CORTEX_USAGE.STREAMLIT_STAGE
+-- snow stage put file://environment.yml @SNOWFLAKE_EXAMPLE.CORTEX_USAGE.STREAMLIT_STAGE
 
 -- 3. Create Streamlit app
-CREATE STREAMLIT SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.CORTEX_COST_CALCULATOR
-  ROOT_LOCATION = '@SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.STREAMLIT_STAGE'
+CREATE STREAMLIT SNOWFLAKE_EXAMPLE.CORTEX_USAGE.CORTEX_COST_CALCULATOR
+  ROOT_LOCATION = '@SNOWFLAKE_EXAMPLE.CORTEX_USAGE.STREAMLIT_STAGE'
   MAIN_FILE = '/streamlit_app.py'
   QUERY_WAREHOUSE = 'YOUR_WAREHOUSE_NAME';
 
@@ -339,8 +355,8 @@ GRANT USAGE ON STREAMLIT CORTEX_COST_CALCULATOR TO ROLE <ROLE_NAME>;
 ```sql
 -- Grant view access
 GRANT USAGE ON DATABASE SNOWFLAKE_EXAMPLE TO ROLE <USER_ROLE>;
-GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE TO ROLE <USER_ROLE>;
-GRANT SELECT ON ALL VIEWS IN SCHEMA SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE TO ROLE <USER_ROLE>;
+GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.CORTEX_USAGE TO ROLE <USER_ROLE>;
+GRANT SELECT ON ALL VIEWS IN SCHEMA SNOWFLAKE_EXAMPLE.CORTEX_USAGE TO ROLE <USER_ROLE>;
 
 -- Grant Streamlit access (if deployed)
 GRANT USAGE ON STREAMLIT CORTEX_COST_CALCULATOR TO ROLE <USER_ROLE>;
@@ -413,11 +429,54 @@ GRANT USAGE ON STREAMLIT CORTEX_COST_CALCULATOR TO ROLE <USER_ROLE>;
 - Cumulative cost over time
 - Cost range visualization
 
+**💰 Cost per User Calculator (NEW):**
+
+Calculate estimated costs per user based on usage patterns:
+
+**Features:**
+- Define expected operations per user per service
+- Adjust usage intensity multiplier
+- Set active days per month
+- See cost breakdown by service
+- Visual pie chart of credit distribution
+
+**Output Metrics:**
+- Credits per user per month
+- Cost per user per month
+- Service-by-service breakdown
+- Percentage distribution across services
+
+**📊 Budget Capacity Calculator (NEW):**
+
+Determine how many users you can support with a given budget:
+
+**Inputs:**
+- Monthly budget (USD)
+- Safety buffer percentage (for unexpected spikes)
+- Usage pattern from calculator above
+
+**Output Metrics:**
+- Number of users supported
+- Total monthly credits consumed
+- Budget utilization percentage
+- Remaining budget capacity
+- Detailed capacity insights table
+
+**Calculation Methodology:**
+- Based on historical usage patterns
+- Uses actual credits per operation from your data
+- Adjustable for different usage scenarios
+- Includes safety buffer for variance
+- Shows detailed breakdown of all calculations
+
 **Use this to:**
 - Forecast future spend
 - Budget planning
 - Capacity planning
 - Proposal creation
+- Per-user cost estimation
+- License/user capacity planning
+- Budget allocation decisions
 
 #### 3️⃣ Scenario Comparison
 
@@ -478,7 +537,7 @@ GRANT USAGE ON STREAMLIT CORTEX_COST_CALCULATOR TO ROLE <USER_ROLE>;
 ### Key Metrics Explained
 
 **Credits Consumed:**
-- Snowflake compute credits used by Cortex AI services
+- Snowflake compute credits used by Cortex services
 - Source: `ACCOUNT_USAGE` views (authoritative billing data)
 - Matches what appears on your Snowflake bill
 
@@ -568,7 +627,7 @@ A: Run `@sql/cleanup_cortex_monitoring.sql`. Complete removal in seconds. See [C
 
 **Q: Why are my views empty?**  
 A: Three common reasons:
-1. No Cortex AI usage in the lookback period (check with `SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.METERING_DAILY_HISTORY WHERE service_type = 'AI_SERVICES'`)
+1. No Cortex usage in the lookback period (check with `SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.METERING_DAILY_HISTORY WHERE service_type = 'AI_SERVICES'`)
 2. Data latency (wait 3 hours after usage)
 3. Lookback period too short (extend to 90 or 180 days)
 
@@ -639,7 +698,7 @@ A: Not directly. The Streamlit app is interactive. For scheduled reports, query 
 | Issue | Solution |
 |-------|----------|
 | "Object does not exist" on ACCOUNT_USAGE | `GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE <role>` |
-| Views return no data | Wait 3 hours for ACCOUNT_USAGE latency; verify Cortex AI usage exists |
+| Views return no data | Wait 3 hours for ACCOUNT_USAGE latency; verify Cortex usage exists |
 | Streamlit won't load | Check warehouse is running; verify app location matches deployment |
 | Permission denied errors | Use ACCOUNTADMIN or grant required privileges |
 | CSV upload fails | Verify CSV came from `extract_metrics_for_calculator.sql` |
@@ -647,7 +706,7 @@ A: Not directly. The Streamlit app is interactive. For scheduled reports, query 
 
 ### Detailed Troubleshooting
 
-See `TROUBLESHOOTING.md` for comprehensive troubleshooting guide including:
+See `help/TROUBLESHOOTING.md` for comprehensive troubleshooting guide including:
 - Deployment issues
 - Permission errors
 - Data quality problems
@@ -659,7 +718,7 @@ See `TROUBLESHOOTING.md` for comprehensive troubleshooting guide including:
 ### Getting Help
 
 **Before contacting support:**
-1. Review `TROUBLESHOOTING.md`
+1. Review `help/TROUBLESHOOTING.md`
 2. Check [Snowflake documentation](https://docs.snowflake.com)
 3. Verify permissions and access
 4. Gather error messages and query IDs
@@ -691,7 +750,7 @@ DROP VIEW IF EXISTS V_CORTEX_DAILY_SUMMARY;
 
 **Option 2: Drop schema** (removes views and schema)
 ```sql
-DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE CASCADE;
+DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.CORTEX_USAGE CASCADE;
 ```
 
 **Option 3: Drop database** (complete removal)
@@ -716,9 +775,9 @@ DROP STREAMLIT IF EXISTS CORTEX_COST_CALCULATOR;
 
 ## Reference Documentation
 
-### Snowflake Cortex AI
+### Snowflake Cortex
 
-- [Cortex AI Overview](https://docs.snowflake.com/en/user-guide/snowflake-cortex)
+- [Cortex Overview](https://docs.snowflake.com/en/user-guide/snowflake-cortex)
 - [Cortex Analyst](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-analyst)
 - [Cortex Search](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-search)
 - [Cortex LLM Functions](https://docs.snowflake.com/en/user-guide/snowflake-cortex/llm-functions)
@@ -752,8 +811,12 @@ DROP STREAMLIT IF EXISTS CORTEX_COST_CALCULATOR;
 ```
 AI_Scoping/
 ├── README.md                          # This file - complete guide
-├── TROUBLESHOOTING.md                 # Detailed troubleshooting
-├── PUBLISHING_CHECKLIST.md            # Pre-release validation
+├── help/                              # User-facing documentation
+│   ├── QUICK_START.md                 # 15-minute setup guide
+│   ├── DEPLOYMENT_WALKTHROUGH.md      # Detailed walkthrough
+│   ├── TROUBLESHOOTING.md             # Issue resolution
+│   ├── ONE_PAGE_SUMMARY.md            # Executive overview
+│   └── PROJECT_STRUCTURE.md           # Project organization guide
 │
 ├── sql/
 │   ├── deploy_cortex_monitoring.sql   # Deploy monitoring views
@@ -765,7 +828,7 @@ AI_Scoping/
     └── environment.yml                # Package dependencies
 ```
 
-**8 essential files** for complete functionality.
+**11 essential files** organized for clarity and ease of use.
 
 ---
 
@@ -826,7 +889,7 @@ AI_Scoping/
 
 **v1.0** (October 2025) - Initial Release
 - Full `ACCOUNT_USAGE` view coverage
-- 9 monitoring views for all Cortex AI services
+- 9 monitoring views for all Cortex services
 - Interactive Streamlit cost calculator
 - Multi-scenario projection engine
 
@@ -837,12 +900,13 @@ AI_Scoping/
 ### Documentation
 
 - `README.md` (this file) - Complete user guide
-- `TROUBLESHOOTING.md` - Issue resolution
-- `PUBLISHING_CHECKLIST.md` - Quality validation
+- `help/GETTING_STARTED.md` - Quick 15-minute setup guide
+- `help/TROUBLESHOOTING.md` - Issue resolution
+- `help/DEPLOYMENT_WALKTHROUGH.md` - Detailed video script
 
 ### Getting Help
 
-1. Check `TROUBLESHOOTING.md` for common issues
+1. Check `help/TROUBLESHOOTING.md` for common issues
 2. Review [Snowflake documentation](https://docs.snowflake.com)
 3. Contact your Snowflake Solutions Engineer
 4. For Streamlit issues, see [Streamlit docs](https://docs.streamlit.io)
@@ -880,4 +944,4 @@ This tool is provided as-is for cost estimation purposes. Projections are estima
 
 ---
 
-*"Professional cost tracking and forecasting for Snowflake Cortex AI workloads."*
+*"Professional cost tracking and forecasting for Snowflake Cortex workloads."*

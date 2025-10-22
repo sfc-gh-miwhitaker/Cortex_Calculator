@@ -1,4 +1,4 @@
-# Troubleshooting Guide: Cortex AI Cost Tracking Pipeline
+# Troubleshooting Guide: Cortex Cost Tracking Pipeline
 
 Common issues and their solutions for deployment, extraction, and calculation.
 
@@ -29,7 +29,7 @@ SQL compilation error: Database 'SNOWFLAKE_EXAMPLE' already exists.
 -- If it does, manually use the existing database:
 
 USE DATABASE SNOWFLAKE_EXAMPLE;
-CREATE SCHEMA IF NOT EXISTS CORTEX_AI_USAGE;
+CREATE SCHEMA IF NOT EXISTS CORTEX_USAGE;
 
 -- Then continue with view creation
 ```
@@ -47,7 +47,7 @@ CREATE SCHEMA IF NOT EXISTS CORTEX_AI_USAGE;
 **Diagnosis:**
 ```sql
 -- Check which views exist
-SHOW VIEWS IN SCHEMA SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE;
+SHOW VIEWS IN SCHEMA SNOWFLAKE_EXAMPLE.CORTEX_USAGE;
 
 -- Check for errors in recent queries
 SELECT 
@@ -152,8 +152,8 @@ GRANT OWNERSHIP ON DATABASE SNOWFLAKE_EXAMPLE TO ROLE <YOUR_ROLE>;
 ```sql
 -- As ACCOUNTADMIN or database owner
 GRANT USAGE ON DATABASE SNOWFLAKE_EXAMPLE TO ROLE <USER_ROLE>;
-GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE TO ROLE <USER_ROLE>;
-GRANT SELECT ON ALL VIEWS IN SCHEMA SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE 
+GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.CORTEX_USAGE TO ROLE <USER_ROLE>;
+GRANT SELECT ON ALL VIEWS IN SCHEMA SNOWFLAKE_EXAMPLE.CORTEX_USAGE 
 TO ROLE <USER_ROLE>;
 ```
 
@@ -169,7 +169,7 @@ TO ROLE <USER_ROLE>;
 
 **Diagnosis:**
 ```sql
--- Check if ANY Cortex AI usage exists
+-- Check if ANY Cortex usage exists
 SELECT 
     service_type,
     usage_date,
@@ -190,8 +190,8 @@ FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_FUNCTIONS_USAGE_HISTORY;
 
 **Solutions:**
 
-1. **No Cortex AI Usage Yet**
-   - Expected if Cortex AI hasn't been used
+1. **No Cortex Usage Yet**
+   - Expected if Cortex hasn't been used
    - Minimum 7-14 days of usage recommended
    - Test with sample Cortex queries
 
@@ -301,7 +301,7 @@ This is a data limitation, not a bug. Update projections accordingly.
 SELECT 
     'Monitoring Views' as source,
     SUM(total_credits) as credits
-FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_DAILY_SUMMARY
+FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_CORTEX_DAILY_SUMMARY
 WHERE usage_date >= DATEADD('day', -30, CURRENT_DATE())
 
 UNION ALL
@@ -606,7 +606,7 @@ SELECT
     table_name,
     view_definition
 FROM SNOWFLAKE.INFORMATION_SCHEMA.VIEWS
-WHERE table_schema = 'CORTEX_AI_USAGE';
+WHERE table_schema = 'CORTEX_USAGE';
 
 -- Recent query history
 SELECT 

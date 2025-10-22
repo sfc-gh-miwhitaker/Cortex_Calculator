@@ -1,6 +1,6 @@
-# Deployment Walkthrough: Cortex AI Cost Calculator
+# Deployment Walkthrough: Cortex Cost Calculator
 
-**A step-by-step guide for deploying and using the Cortex AI Cost Calculator**
+**A step-by-step guide for deploying and using the Cortex Cost Calculator**
 
 *This document serves as a script for video walkthroughs or live demonstrations.*
 
@@ -82,7 +82,7 @@ GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE <YOUR_ROLE>;
 - Validation queries at the end
 
 **What to say:**
-> "Now we'll deploy the monitoring infrastructure. This script creates a database called SNOWFLAKE_EXAMPLE, a schema called CORTEX_AI_USAGE, and 9 views that track different Cortex AI services. The script is idempotent, meaning it's safe to run multiple times."
+> "Now we'll deploy the monitoring infrastructure. This script creates a database called SNOWFLAKE_EXAMPLE, a schema called CORTEX_USAGE, and 9 views that track different Cortex services. The script is idempotent, meaning it's safe to run multiple times."
 
 > "The deployment creates read-only views that query Snowflake's ACCOUNT_USAGE. There's no data copying, no tables created, just views. This is completely non-disruptive to your production workloads."
 
@@ -99,12 +99,12 @@ At the end of the script, check validation output:
 ```
 
 **If views show 0 rows:**
-- This is normal if Cortex AI hasn't been used yet
-- Data latency: Wait 3 hours after Cortex AI usage
+- This is normal if Cortex hasn't been used yet
+- Data latency: Wait 3 hours after Cortex usage
 - Check lookback period (default: 90 days)
 
 **What to say:**
-> "The validation section shows us whether each view was created successfully and how many rows of data are available. If you see zero rows, that's okay - it just means you haven't used Cortex AI services in the last 90 days, or there's a data latency delay."
+> "The validation section shows us whether each view was created successfully and how many rows of data are available. If you see zero rows, that's okay - it just means you haven't used Cortex services in the last 90 days, or there's a data latency delay."
 
 ---
 
@@ -121,19 +121,19 @@ SELECT
     MAX(usage_date) AS last_date,
     SUM(total_credits) AS total_credits,
     COUNT(DISTINCT usage_date) AS days_active
-FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_DAILY_SUMMARY
+FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_CORTEX_DAILY_SUMMARY
 GROUP BY service_type
 ORDER BY total_credits DESC;
 ```
 
 **What to say:**
-> "Let's check what data we have available. This query shows us which Cortex AI services have been used, the date range of available data, and how many credits have been consumed."
+> "Let's check what data we have available. This query shows us which Cortex services have been used, the date range of available data, and how many credits have been consumed."
 
 ### Step 2.2: Review Sample Data
 
 ```sql
 SELECT *
-FROM SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE.V_CORTEX_COST_EXPORT
+FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_CORTEX_COST_EXPORT
 ORDER BY date DESC, total_credits DESC
 LIMIT 20;
 ```
@@ -163,7 +163,7 @@ Fill in the form:
 | Field | Value | Notes |
 |-------|-------|-------|
 | **App name** | `CORTEX_COST_CALCULATOR` | Or your preferred name |
-| **App location** | `SNOWFLAKE_EXAMPLE.CORTEX_AI_USAGE` | Where views are deployed |
+| **App location** | `SNOWFLAKE_EXAMPLE.CORTEX_USAGE` | Where views are deployed |
 | **Warehouse** | Select a warehouse | SMALL is sufficient |
 
 **What to say:**
@@ -267,7 +267,7 @@ Click **"📊 Scenario Comparison"** tab
 **What to say:**
 > "The Scenario Comparison tab lets us see all growth scenarios at once. This is perfect for presenting options to stakeholders or finance teams. You can see the dramatic difference between Conservative and Rapid growth."
 
-> "You can also build custom scenarios here. For example, if you're planning to roll out Cortex AI to 3 new departments, you might model a specific growth curve that reflects your rollout plan."
+> "You can also build custom scenarios here. For example, if you're planning to roll out Cortex to 3 new departments, you might model a specific growth curve that reflects your rollout plan."
 
 ### Step 4.5: Review Summary Report (Tab 4)
 
@@ -398,7 +398,7 @@ In **your** Snowflake account:
 
 ### What We Accomplished
 
-1. ✅ **Deployed monitoring** - 9 views tracking all Cortex AI services
+1. ✅ **Deployed monitoring** - 9 views tracking all Cortex services
 2. ✅ **Deployed calculator** - Interactive cost analysis tool
 3. ✅ **Analyzed usage** - Historical trends and patterns
 4. ✅ **Generated projections** - Multiple growth scenarios
@@ -438,7 +438,7 @@ In **your** Snowflake account:
 
 ### For Everyone
 
-1. Check `TROUBLESHOOTING.md` if issues arise
+1. Check `help/TROUBLESHOOTING.md` if issues arise
 2. Explore custom scenarios for your specific use case
 3. Integrate exports into your planning tools
 4. Provide feedback for improvements
@@ -449,8 +449,9 @@ In **your** Snowflake account:
 
 ### Documentation
 - **README.md** - Complete user guide
-- **TROUBLESHOOTING.md** - Issue resolution
-- **Snowflake Docs** - [Cortex AI](https://docs.snowflake.com/en/user-guide/snowflake-cortex)
+- **help/GETTING_STARTED.md** - Quick 15-minute setup guide
+- **help/TROUBLESHOOTING.md** - Issue resolution
+- **Snowflake Docs** - [Cortex](https://docs.snowflake.com/en/user-guide/snowflake-cortex)
 
 ### Support
 - Solution Engineers: Internal SE team
