@@ -20,6 +20,14 @@ Takes 15 minutes total from zero to working calculator.
 
 ---
 
+## 📸 Streamlit Calculator Preview
+
+![Cortex Cost Calculator Screenshot](images/streamlit_screenshot.png)
+
+*Interactive cost calculator with historical analysis, projections, and per-user estimates*
+
+---
+
 ## 🚀 Quick Start
 
 **For Solution Engineers:** Deploy monitoring in customer accounts, extract usage data, and generate cost estimates in your own calculator.
@@ -847,6 +855,10 @@ DROP STREAMLIT IF EXISTS CORTEX_COST_CALCULATOR;
 AI_Scoping/
 ├── README.md                          # This file - complete guide
 ├── .gitignore                         # Git ignore patterns
+├── images/                            # Screenshots and visuals
+│   ├── streamlit_screenshot.png       # Streamlit app preview
+│   └── README.md                      # Screenshot instructions
+│
 ├── help/                              # User-facing documentation
 │   ├── GETTING_STARTED.md             # Consolidated getting started guide
 │   ├── DEPLOYMENT_WALKTHROUGH.md      # Detailed walkthrough
@@ -862,7 +874,7 @@ AI_Scoping/
     └── environment.yml                # Package dependencies
 ```
 
-**9 essential files** organized for clarity and ease of use.
+**11 essential files** organized for clarity and ease of use.
 
 ---
 
