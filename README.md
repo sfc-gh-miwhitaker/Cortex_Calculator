@@ -10,9 +10,9 @@ A professional toolkit for tracking Snowflake Cortex service consumption and gen
 
 **Follow these 3 steps:**
 
-1. **Read:** `help/GETTING_STARTED.md` - Complete getting started guide (5 min read)
-2. **Deploy:** `sql/deploy_cortex_monitoring.sql` - Deploy monitoring views (5 min)
-3. **Launch:** `streamlit/cortex_cost_calculator/streamlit_app.py` - Deploy cost calculator (5 min)
+1. **Read:** [`help/GETTING_STARTED.md`](help/GETTING_STARTED.md) - Complete getting started guide (5 min read)
+2. **Deploy:** [`sql/deploy_cortex_monitoring.sql`](sql/deploy_cortex_monitoring.sql) - Deploy monitoring views (5 min)
+3. **Launch:** [Deploy cost calculator](#deploy-streamlit-calculator) - Follow Streamlit deployment guide (5 min)
 
 Takes 15 minutes total from zero to working calculator.
 
