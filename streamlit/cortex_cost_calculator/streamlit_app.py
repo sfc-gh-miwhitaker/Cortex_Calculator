@@ -736,20 +736,19 @@ def show_cost_projections(df, credit_cost, variance_pct):
     **Two Ways to Use Cortex Services:**
     
     1. **SQL Functions** (e.g., `SELECT SNOWFLAKE.CORTEX.COMPLETE(...)`)
-       - ✅ Query-level tracking available via `CORTEX_FUNCTIONS_QUERY_USAGE_HISTORY`
-       - ✅ Detailed token and credit consumption per query
-       - ✅ Full visibility into model usage and costs
-       - 📊 **This calculator shows SQL function usage from your ACCOUNT_USAGE views**
+       - ✅ Hourly aggregated tracking via `CORTEX_FUNCTIONS_USAGE_HISTORY` (tokens, credits, function, model)
+       - ✅ **Plus** query-level tracking via `CORTEX_FUNCTIONS_QUERY_USAGE_HISTORY`
+       - ✅ Full visibility: per-query breakdown + per-model breakdown + hourly trends
     
     2. **REST API** (e.g., `POST /api/v2/cortex/complete`)
-       - ⚠️ Limited granular tracking (aggregated only)
-       - ⚠️ No query-level breakdown available
-       - ⚠️ Tracked in hourly aggregates via `CORTEX_FUNCTIONS_USAGE_HISTORY`
-       - 📊 **API usage appears in aggregated totals but without query details**
+       - ✅ Hourly aggregated tracking via `CORTEX_FUNCTIONS_USAGE_HISTORY` (tokens, credits, function, model)
+       - ℹ️ Query-level details not available (Snowflake limitation)
+       - ✅ All essential metrics tracked: total tokens, credits, function names, models used
     
-    **💡 Key Insight:** If you're using REST APIs extensively, your actual per-request costs may differ from 
-    the query-level analysis shown in the "AISQL Functions" tab, which only shows SQL function usage patterns.
-    However, **total credit consumption is accurately captured** regardless of access method.
+    **💡 Key Insight:** Both access methods are fully tracked in `CORTEX_FUNCTIONS_USAGE_HISTORY` with 
+    tokens, credits, and model information. The only difference is that SQL functions get **additional** 
+    query-level detail. **All cost projections in this calculator are accurate for both access methods** 
+    because they're based on the aggregated usage data that captures everything.
     """)
     
     # ========================================================================
@@ -948,14 +947,14 @@ def show_cost_projections(df, credit_cost, variance_pct):
         4. If rates differ significantly, verify your ACCOUNT_USAGE data
         """)
         
-        st.warning("""
-        ⚠️ **Important Notes:**
-        - **Pricing applies to BOTH SQL functions AND REST API calls** (same rates)
-        - Rates shown are for Snowflake-managed compute
-        - AISQL function costs vary by model (claude, llama, mistral, etc.)
+        st.success("""
+        ✅ **Important Notes:**
+        - **Pricing is identical** for both SQL functions AND REST API calls (same rates apply)
+        - **All usage is tracked** in ACCOUNT_USAGE views with tokens, credits, function, and model details
+        - AISQL function costs vary by model (claude, llama, mistral, etc.) and token usage
         - Token-based pricing depends on input + output tokens
-        - Your actual costs reflect usage captured in ACCOUNT_USAGE views
-        - **REST API usage**: Total credits are tracked, but query-level details are only available for SQL functions
+        - Rates shown are for Snowflake-managed compute
+        - **Query-level breakdown** available only for SQL functions; REST API usage appears in hourly aggregates
         """)
         
         # Calculate actual rates from data if available
@@ -1042,26 +1041,28 @@ def show_cost_projections(df, credit_cost, variance_pct):
         """)
         
         comparison_data = pd.DataFrame([
-            {'Feature': 'Total credit consumption', 'SQL Functions': '✅ Tracked', 'REST API': '✅ Tracked'},
-            {'Feature': 'Per-query token counts', 'SQL Functions': '✅ Available', 'REST API': '❌ Not available'},
-            {'Feature': 'Model-level breakdown', 'SQL Functions': '✅ Available', 'REST API': '⚠️ Aggregated only'},
-            {'Feature': 'Cost per operation', 'SQL Functions': '✅ Precise', 'REST API': '⚠️ Estimated from hourly aggregates'}
+            {'Feature': 'Total credits & tokens', 'SQL Functions': '✅ Tracked (hourly)', 'REST API': '✅ Tracked (hourly)'},
+            {'Feature': 'Function & model breakdown', 'SQL Functions': '✅ Available', 'REST API': '✅ Available'},
+            {'Feature': 'Per-query details', 'SQL Functions': '✅ Yes (QUERY_ID level)', 'REST API': 'ℹ️ No (hourly aggregates only)'},
+            {'Feature': 'Cost projections accuracy', 'SQL Functions': '✅ Highly accurate', 'REST API': '✅ Highly accurate'},
+            {'Feature': 'Historical trend analysis', 'SQL Functions': '✅ Full detail', 'REST API': '✅ Full detail'}
         ])
         
         st.dataframe(comparison_data, use_container_width=True, hide_index=True)
         
         st.markdown("""
-        **Impact on Projections:**
-        - If you use **primarily SQL functions**, projections will be very accurate
-        - If you use **REST APIs extensively**, projections are based on aggregated data and may vary
-        - **Total cost calculations are always accurate** regardless of access method
-        - Historical trends and growth projections remain reliable for planning purposes
+        **Impact on Your Cost Analysis:**
         
-        **Recommendation:** For the most detailed cost analysis, use SQL functions where possible. 
-        For REST API usage, focus on total credit consumption trends rather than per-request analysis.
+        ✅ **Good News:** Cost projections in this calculator are highly accurate for **both** access methods because:
+        - `CORTEX_FUNCTIONS_USAGE_HISTORY` captures all usage (SQL + API) with tokens, credits, function, and model details
+        - Historical trends, daily summaries, and cost projections use this aggregated data
+        - Total credit consumption is 100% accurate regardless of how you access Cortex
         
-        **Note:** The "AISQL Functions" tab shows query-level analysis which reflects SQL function usage only.
-        If you're using REST APIs, you'll see aggregated totals but not the same level of query detail.
+        ℹ️ **Only Difference:** The "AISQL Functions" tab shows query-level analysis, which is only available for SQL functions.
+        REST API users will see accurate totals and trends but won't see individual query breakdowns.
+        
+        **Bottom Line:** Whether you use SQL functions, REST API, or both, this calculator provides accurate 
+        cost tracking and projections based on your actual ACCOUNT_USAGE data.
         """)
     
     # ========================================================================
