@@ -1,8 +1,3 @@
-"""
-Cortex Cost Calculator - Streamlit in Snowflake
-Hosted directly in Snowflake for seamless data access
-"""
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -267,8 +262,9 @@ def main():
         df['DATE'] = pd.to_datetime(df['USAGE_DATE']) if 'USAGE_DATE' in df.columns else pd.to_datetime(df.iloc[:, 0])
     
     # Create tabs
-    tab1, tab2, tab3 = st.tabs([
+    tab1, tab2, tab3, tab4 = st.tabs([
         "📈 Historical Analysis",
+        "🤖 AISQL Functions",
         "🔮 Cost Projections",
         "📋 Summary Report"
     ])
@@ -277,9 +273,12 @@ def main():
         show_historical_analysis(df, credit_cost)
     
     with tab2:
-        show_cost_projections(df, credit_cost, variance_pct)
+        show_aisql_functions(credit_cost)
     
     with tab3:
+        show_cost_projections(df, credit_cost, variance_pct)
+    
+    with tab4:
         show_summary_report(df, credit_cost, variance_pct)
 
 def show_historical_analysis(df, credit_cost):
@@ -404,9 +403,666 @@ def show_historical_analysis(df, credit_cost):
     fig.update_layout(hovermode='x unified')
     st.plotly_chart(fig, use_container_width=True)
 
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def fetch_aisql_data():
+    """Fetch all AISQL data in one go (cached for performance)"""
+    try:
+        # Function Summary - LIMIT to top 50 for performance
+        function_summary_df = session.sql("""
+            SELECT 
+                function_name,
+                model_name,
+                call_count,
+                total_credits,
+                total_tokens,
+                avg_credits_per_call,
+                avg_tokens_per_call,
+                cost_per_million_tokens,
+                serverless_calls,
+                compute_calls
+            FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_AISQL_FUNCTION_SUMMARY
+            ORDER BY total_credits DESC
+            LIMIT 50
+        """).to_pandas()
+        
+        # Model Comparison
+        model_comparison_df = session.sql("""
+            SELECT 
+                model_name,
+                functions_used,
+                total_calls,
+                total_credits,
+                total_tokens,
+                avg_credits_per_call,
+                cost_per_million_tokens,
+                median_credits,
+                p90_credits
+            FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_AISQL_MODEL_COMPARISON
+            ORDER BY total_credits DESC
+            LIMIT 20
+        """).to_pandas()
+        
+        # Daily Trends - LIMIT to last 30 days and top functions
+        daily_trends_df = session.sql("""
+            SELECT 
+                usage_date,
+                function_name,
+                model_name,
+                daily_credits,
+                daily_tokens,
+                serverless_calls,
+                compute_calls
+            FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_AISQL_DAILY_TRENDS
+            WHERE usage_date >= DATEADD('day', -30, CURRENT_DATE())
+            ORDER BY usage_date DESC, daily_credits DESC
+            LIMIT 500
+        """).to_pandas()
+        
+        return function_summary_df, model_comparison_df, daily_trends_df
+    except Exception as e:
+        return None, None, None
+
+def show_aisql_functions(credit_cost):
+    """Display AISQL Functions analysis tab (NEW in v2.5)"""
+    st.header("🤖 AISQL Function & Model Analysis")
+    st.markdown("**Detailed tracking of Cortex AISQL functions and models** (v2.6: Updated pricing Oct 31, 2025)")
+    
+    # ========================================================================
+    # Fetch AISQL data (cached for performance)
+    # ========================================================================
+    
+    with st.spinner("Loading AISQL data..."):
+        function_summary_df, model_comparison_df, daily_trends_df = fetch_aisql_data()
+    
+    if function_summary_df is None:
+        st.error("Unable to load AISQL function data.")
+        st.info("💡 Make sure you've deployed v2.5 views using deploy_cortex_monitoring.sql")
+        return
+    
+    if function_summary_df.empty:
+        st.warning("No AISQL function usage found. Start using Cortex AISQL functions to see data here!")
+        st.markdown("""
+        **Tracked AISQL Functions:**
+        - AI_COMPLETE, COMPLETE
+        - AI_CLASSIFY
+        - AI_FILTER
+        - AI_AGG
+        - AI_EMBED, EMBED_TEXT, EMBED_IMAGE
+        - AI_EXTRACT
+        - AI_SENTIMENT
+        - AI_SUMMARIZE_AGG
+        - AI_TRANSCRIBE
+        - And more...
+        """)
+        return
+    
+    if model_comparison_df is None:
+        model_comparison_df = pd.DataFrame()
+    if daily_trends_df is None:
+        daily_trends_df = pd.DataFrame()
+    
+    # ========================================================================
+    # Section 1: Function & Model Overview
+    # ========================================================================
+    
+    st.subheader("📊 Function & Model Overview")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_functions = function_summary_df['FUNCTION_NAME'].nunique()
+        st.metric("Functions Used", total_functions)
+    
+    with col2:
+        total_models = function_summary_df['MODEL_NAME'].dropna().nunique()
+        st.metric("Models Used", total_models)
+    
+    with col3:
+        total_calls = function_summary_df['CALL_COUNT'].sum()
+        st.metric("Total Calls", f"{total_calls:,.0f}")
+    
+    with col4:
+        total_credits = function_summary_df['TOTAL_CREDITS'].sum()
+        total_cost = total_credits * credit_cost
+        st.metric("Total Cost", f"${total_cost:,.2f}")
+    
+    st.markdown("---")
+    
+    # ========================================================================
+    # Section 2: Top Functions by Cost
+    # ========================================================================
+    
+    st.subheader("💰 Top Functions by Cost")
+    
+    # Aggregate by function (across all models)
+    top_functions = function_summary_df.groupby('FUNCTION_NAME').agg({
+        'CALL_COUNT': 'sum',
+        'TOTAL_CREDITS': 'sum',
+        'TOTAL_TOKENS': 'sum',
+        'SERVERLESS_CALLS': 'sum',
+        'COMPUTE_CALLS': 'sum'
+    }).reset_index()
+    
+    top_functions['COST_USD'] = top_functions['TOTAL_CREDITS'] * credit_cost
+    top_functions = top_functions.sort_values('TOTAL_CREDITS', ascending=False).head(10)
+    
+    # Bar chart
+    fig_functions = px.bar(
+        top_functions,
+        x='FUNCTION_NAME',
+        y='TOTAL_CREDITS',
+        title='Top 10 AISQL Functions by Credit Usage',
+        labels={'TOTAL_CREDITS': 'Total Credits', 'FUNCTION_NAME': 'Function'},
+        color='TOTAL_CREDITS',
+        color_continuous_scale='Viridis'
+    )
+    fig_functions.update_layout(showlegend=False)
+    st.plotly_chart(fig_functions, use_container_width=True)
+    
+    # Display table
+    display_cols = ['FUNCTION_NAME', 'CALL_COUNT', 'TOTAL_CREDITS', 'COST_USD', 
+                    'TOTAL_TOKENS', 'SERVERLESS_CALLS', 'COMPUTE_CALLS']
+    st.dataframe(
+        top_functions[display_cols].style.format({
+            'CALL_COUNT': '{:,.0f}',
+            'TOTAL_CREDITS': '{:.4f}',
+            'COST_USD': '${:,.2f}',
+            'TOTAL_TOKENS': '{:,.0f}',
+            'SERVERLESS_CALLS': '{:,.0f}',
+            'COMPUTE_CALLS': '{:,.0f}'
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    st.markdown("---")
+    
+    # ========================================================================
+    # Section 3: Model Comparison
+    # ========================================================================
+    
+    if not model_comparison_df.empty:
+        st.subheader("🎯 Model Comparison")
+        
+        # Prepare data
+        model_comparison_df['COST_USD'] = model_comparison_df['TOTAL_CREDITS'] * credit_cost
+        model_comparison_df['COST_PER_MILLION_USD'] = model_comparison_df['COST_PER_MILLION_TOKENS'] * credit_cost
+        
+        # Scatter plot: Cost vs Usage
+        fig_models = px.scatter(
+            model_comparison_df,
+            x='TOTAL_CALLS',
+            y='TOTAL_CREDITS',
+            size='TOTAL_TOKENS',
+            color='MODEL_NAME',
+            title='Model Usage: Calls vs Credits (bubble size = tokens)',
+            labels={
+                'TOTAL_CALLS': 'Total Calls',
+                'TOTAL_CREDITS': 'Total Credits',
+                'MODEL_NAME': 'Model'
+            },
+            hover_data=['FUNCTIONS_USED', 'AVG_CREDITS_PER_CALL', 'COST_PER_MILLION_TOKENS']
+        )
+        fig_models.update_traces(marker=dict(sizemode='diameter', sizeref=model_comparison_df['TOTAL_TOKENS'].max()/1e6))
+        st.plotly_chart(fig_models, use_container_width=True)
+        
+        # Model comparison table
+        st.markdown("**📋 Model Details**")
+        display_cols_model = ['MODEL_NAME', 'FUNCTIONS_USED', 'TOTAL_CALLS', 'TOTAL_CREDITS', 
+                              'COST_USD', 'COST_PER_MILLION_USD', 'TOTAL_TOKENS']
+        st.dataframe(
+            model_comparison_df[display_cols_model].style.format({
+                'FUNCTIONS_USED': '{:.0f}',
+                'TOTAL_CALLS': '{:,.0f}',
+                'TOTAL_CREDITS': '{:.4f}',
+                'COST_USD': '${:,.2f}',
+                'COST_PER_MILLION_USD': '${:,.2f}',
+                'TOTAL_TOKENS': '{:,.0f}'
+            }),
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        st.markdown("---")
+    
+    # ========================================================================
+    # Section 4: Function-Model Heatmap (Collapsible for performance)
+    # ========================================================================
+    
+    with st.expander("🔥 Function-Model Usage Heatmap", expanded=False):
+        # Create pivot table for heatmap
+        heatmap_data = function_summary_df.pivot_table(
+            index='FUNCTION_NAME',
+            columns='MODEL_NAME',
+            values='TOTAL_CREDITS',
+            fill_value=0
+        )
+        
+        # Create heatmap
+        fig_heatmap = px.imshow(
+            heatmap_data,
+            labels=dict(x="Model", y="Function", color="Credits"),
+            title="Credit Usage by Function and Model",
+            color_continuous_scale='YlOrRd',
+            aspect='auto'
+        )
+        fig_heatmap.update_xaxes(side='bottom')
+        st.plotly_chart(fig_heatmap, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # ========================================================================
+    # Section 5: Daily Trends (Collapsible for performance)
+    # ========================================================================
+    
+    if not daily_trends_df.empty:
+        with st.expander("📈 Daily Usage Trends (Last 30 Days)", expanded=False):
+            # Aggregate by date and function
+            daily_agg = daily_trends_df.groupby(['USAGE_DATE', 'FUNCTION_NAME']).agg({
+                'DAILY_CREDITS': 'sum',
+                'DAILY_TOKENS': 'sum'
+            }).reset_index()
+            
+            # Line chart
+            fig_trends = px.line(
+                daily_agg,
+                x='USAGE_DATE',
+                y='DAILY_CREDITS',
+                color='FUNCTION_NAME',
+                title='Daily Credit Usage by Function (Last 30 Days)',
+                labels={'DAILY_CREDITS': 'Daily Credits', 'USAGE_DATE': 'Date'}
+            )
+            fig_trends.update_layout(hovermode='x unified')
+            st.plotly_chart(fig_trends, use_container_width=True)
+        
+        st.markdown("---")
+    
+    # ========================================================================
+    # Section 6: Detailed Function-Model Table (Collapsible for performance)
+    # ========================================================================
+    
+    with st.expander("📋 Detailed Function-Model Breakdown", expanded=False):
+        st.markdown("**Complete data table with all metrics**")
+        
+        # Prepare detailed table
+        detailed_df = function_summary_df.copy()
+        detailed_df['COST_USD'] = detailed_df['TOTAL_CREDITS'] * credit_cost
+        detailed_df['COST_PER_MILLION_USD'] = detailed_df['COST_PER_MILLION_TOKENS'] * credit_cost
+        detailed_df = detailed_df.sort_values('TOTAL_CREDITS', ascending=False)
+        
+        display_cols_detailed = [
+            'FUNCTION_NAME', 'MODEL_NAME', 'CALL_COUNT', 'TOTAL_CREDITS', 'COST_USD',
+            'TOTAL_TOKENS', 'COST_PER_MILLION_USD', 'AVG_TOKENS_PER_CALL',
+            'SERVERLESS_CALLS', 'COMPUTE_CALLS'
+        ]
+        
+        st.dataframe(
+            detailed_df[display_cols_detailed].style.format({
+                'CALL_COUNT': '{:,.0f}',
+                'TOTAL_CREDITS': '{:.6f}',
+                'COST_USD': '${:,.4f}',
+                'TOTAL_TOKENS': '{:,.0f}',
+                'COST_PER_MILLION_USD': '${:,.2f}',
+                'AVG_TOKENS_PER_CALL': '{:,.0f}',
+                'SERVERLESS_CALLS': '{:,.0f}',
+                'COMPUTE_CALLS': '{:,.0f}'
+            }),
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Download button
+        csv = detailed_df.to_csv(index=False)
+        st.download_button(
+            label="📥 Download AISQL Data as CSV",
+            data=csv,
+            file_name=f"aisql_function_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv"
+        )
+    
+    st.markdown("---")
+    st.info("💡 **Tip**: Use this data to optimize your AISQL function usage and choose the most cost-effective models for your use case.")
+
 def show_cost_projections(df, credit_cost, variance_pct):
     """Display cost projections tab"""
     st.header("Cost Projections")
+    
+    # ========================================================================
+    # Important: API vs SQL Function Usage
+    # ========================================================================
+    st.info("""
+    ### 🔍 Understanding Your Cortex Usage Costs
+    
+    **Two Ways to Use Cortex Services:**
+    
+    1. **SQL Functions** (e.g., `SELECT SNOWFLAKE.CORTEX.COMPLETE(...)`)
+       - ✅ Query-level tracking available via `CORTEX_FUNCTIONS_QUERY_USAGE_HISTORY`
+       - ✅ Detailed token and credit consumption per query
+       - ✅ Full visibility into model usage and costs
+       - 📊 **This calculator shows SQL function usage from your ACCOUNT_USAGE views**
+    
+    2. **REST API** (e.g., `POST /api/v2/cortex/complete`)
+       - ⚠️ Limited granular tracking (aggregated only)
+       - ⚠️ No query-level breakdown available
+       - ⚠️ Tracked in hourly aggregates via `CORTEX_FUNCTIONS_USAGE_HISTORY`
+       - 📊 **API usage appears in aggregated totals but without query details**
+    
+    **💡 Key Insight:** If you're using REST APIs extensively, your actual per-request costs may differ from 
+    the query-level analysis shown in the "AISQL Functions" tab, which only shows SQL function usage patterns.
+    However, **total credit consumption is accurately captured** regardless of access method.
+    """)
+    
+    # ========================================================================
+    # Snowflake Official Consumption Rates (Reference)
+    # ========================================================================
+    with st.expander("📘 Snowflake Official Consumption Rates (Updated Oct 31, 2025)", expanded=False):
+        st.markdown("""
+        **Reference: Snowflake AI Features Credit Table (Table 6)**
+        
+        These are Snowflake's published consumption rates for Cortex services:
+        *Source: [Snowflake Service Consumption Table](https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf) (Effective Oct 31, 2025)*
+        """)
+        
+        # Create tabs for different service categories
+        rate_tab1, rate_tab2, rate_tab3, rate_tab4 = st.tabs([
+            "📄 Document AI & Search",
+            "🤖 LLM Functions", 
+            "🎯 Text Functions",
+            "🖼️ Embeddings"
+        ])
+        
+        with rate_tab1:
+            st.markdown("**Document AI & Search Services**")
+            rates_data_doc = pd.DataFrame([
+                {
+                    'Service': 'AI Parse Document (Layout)',
+                    'Rate': '3.33 credits per 1,000 pages',
+                    'Access': 'SQL + API',
+                    'Metric': 'Pages processed',
+                    'Your Data': 'V_DOCUMENT_AI_DETAIL view'
+                },
+                {
+                    'Service': 'AI Parse Document (OCR)',
+                    'Rate': '0.5 credits per 1,000 pages',
+                    'Access': 'SQL + API',
+                    'Metric': 'Pages processed',
+                    'Your Data': 'V_DOCUMENT_AI_DETAIL view'
+                },
+                {
+                    'Service': 'Cortex Analyst',
+                    'Rate': '67 credits per 1,000 messages (0.067/msg)',
+                    'Access': 'API only',
+                    'Metric': 'Messages/requests',
+                    'Your Data': 'V_CORTEX_ANALYST_DETAIL view'
+                },
+                {
+                    'Service': 'Cortex Search',
+                    'Rate': '6.3 credits per GB/month',
+                    'Access': 'SQL + API',
+                    'Metric': 'Indexed data size',
+                    'Your Data': 'V_CORTEX_SEARCH_DETAIL view'
+                },
+                {
+                    'Service': 'Document AI',
+                    'Rate': '8 credits per hour',
+                    'Access': 'SQL + API',
+                    'Metric': 'Compute hours',
+                    'Your Data': 'V_DOCUMENT_AI_DETAIL view'
+                }
+            ])
+            st.dataframe(rates_data_doc, use_container_width=True, hide_index=True)
+        
+        with rate_tab2:
+            st.markdown("**LLM Text Generation Functions (COMPLETE, CLASSIFY, etc.)**")
+            st.caption("Rates shown are credits per 1 million tokens. Available via SQL functions AND REST API.")
+            
+            llm_rates = pd.DataFrame([
+                {'Model': 'claude-3-5-sonnet', 'Input': 3.0, 'Output': 15.0, 'Access': 'SQL + API', 'Notes': 'High capability'},
+                {'Model': 'claude-3-5-haiku', 'Input': 1.0, 'Output': 5.0, 'Access': 'SQL + API', 'Notes': 'Fast & efficient'},
+                {'Model': 'claude-3-opus', 'Input': 15.0, 'Output': 75.0, 'Access': 'SQL + API', 'Notes': 'Most capable'},
+                {'Model': 'claude-3-sonnet', 'Input': 3.0, 'Output': 15.0, 'Access': 'SQL + API', 'Notes': 'Balanced'},
+                {'Model': 'claude-3-haiku', 'Input': 0.25, 'Output': 1.25, 'Access': 'SQL + API', 'Notes': 'Fastest'},
+                {'Model': 'llama3.1-405b', 'Input': 3.0, 'Output': 3.0, 'Access': 'SQL + API', 'Notes': 'Large model'},
+                {'Model': 'llama3.1-70b', 'Input': 0.4, 'Output': 0.4, 'Access': 'SQL + API', 'Notes': 'Good balance'},
+                {'Model': 'llama3.1-8b', 'Input': 0.1, 'Output': 0.1, 'Access': 'SQL + API', 'Notes': 'Efficient'},
+                {'Model': 'llama3-70b', 'Input': 0.4, 'Output': 0.4, 'Access': 'SQL + API', 'Notes': 'Previous gen'},
+                {'Model': 'llama3-8b', 'Input': 0.1, 'Output': 0.1, 'Access': 'SQL + API', 'Notes': 'Previous gen'},
+                {'Model': 'mistral-large2', 'Input': 2.0, 'Output': 6.0, 'Access': 'SQL + API', 'Notes': 'Latest large'},
+                {'Model': 'mistral-large', 'Input': 2.0, 'Output': 6.0, 'Access': 'SQL + API', 'Notes': 'Large model'},
+                {'Model': 'mixtral-8x7b', 'Input': 0.15, 'Output': 0.15, 'Access': 'SQL + API', 'Notes': 'MoE model'},
+                {'Model': 'mistral-7b', 'Input': 0.1, 'Output': 0.1, 'Access': 'SQL + API', 'Notes': 'Base model'},
+                {'Model': 'jamba-1.5-large', 'Input': 2.0, 'Output': 8.0, 'Access': 'SQL + API', 'Notes': 'Hybrid SSM'},
+                {'Model': 'jamba-1.5-mini', 'Input': 0.2, 'Output': 0.4, 'Access': 'SQL + API', 'Notes': 'Efficient'},
+                {'Model': 'gemma-7b', 'Input': 0.1, 'Output': 0.1, 'Access': 'SQL + API', 'Notes': 'Google model'},
+                {'Model': 'reka-core', 'Input': 3.0, 'Output': 15.0, 'Access': 'SQL + API', 'Notes': 'Multimodal'},
+                {'Model': 'reka-flash', 'Input': 0.3, 'Output': 1.5, 'Access': 'SQL + API', 'Notes': 'Fast multimodal'}
+            ])
+            
+            st.dataframe(
+                llm_rates.style.format({
+                    'Input': '{:.2f}',
+                    'Output': '{:.2f}'
+                }),
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            st.info("""
+            💡 **Important**: These models are used for functions like:
+            - `COMPLETE()` / `AI_COMPLETE()` - Text generation
+            - `AI_CLASSIFY()` - Classification tasks
+            - `AI_FILTER()` - Content filtering
+            - `AI_AGG()` - Aggregation tasks
+            """)
+        
+        with rate_tab3:
+            st.markdown("**Specialized Text Functions**")
+            st.caption("Rates shown are credits per 1 million tokens. Available via SQL functions AND REST API.")
+            
+            text_rates = pd.DataFrame([
+                {'Function': 'SENTIMENT', 'Rate': 0.056, 'Access': 'SQL + API', 'Metric': 'per 1M tokens'},
+                {'Function': 'SUMMARIZE', 'Rate': 0.056, 'Access': 'SQL + API', 'Metric': 'per 1M tokens'},
+                {'Function': 'TRANSLATE', 'Rate': 0.056, 'Access': 'SQL + API', 'Metric': 'per 1M tokens'},
+                {'Function': 'EXTRACT_ANSWER', 'Rate': 0.056, 'Access': 'SQL + API', 'Metric': 'per 1M tokens'},
+                {'Function': 'AI_EXTRACT (standard)', 'Rate': 0.15, 'Access': 'SQL + API', 'Metric': 'per 1M tokens'},
+                {'Function': 'AI_EXTRACT (mistral-large)', 'Rate': 2.0, 'Access': 'SQL + API', 'Metric': 'per 1M input tokens'},
+                {'Function': 'AI_EXTRACT (mistral-large)', 'Rate': 6.0, 'Access': 'SQL + API', 'Metric': 'per 1M output tokens'},
+                {'Function': 'AI_SENTIMENT', 'Rate': 0.3, 'Access': 'SQL + API', 'Metric': 'per 1M tokens'}
+            ])
+            
+            st.dataframe(
+                text_rates.style.format({'Rate': '{:.3f}'}),
+                use_container_width=True,
+                hide_index=True
+            )
+        
+        with rate_tab4:
+            st.markdown("**Embedding Functions**")
+            st.caption("Rates shown are credits per 1 million tokens. Available via SQL functions AND REST API.")
+            
+            embedding_rates = pd.DataFrame([
+                {'Function': 'EMBED_TEXT_768', 'Rate': 0.014, 'Access': 'SQL + API', 'Dimensions': 768},
+                {'Function': 'EMBED_TEXT_1024', 'Rate': 0.014, 'Access': 'SQL + API', 'Dimensions': 1024},
+                {'Function': 'AI_EMBED (e5-base-v2)', 'Rate': 0.014, 'Access': 'SQL + API', 'Dimensions': 768},
+                {'Function': 'AI_EMBED (multilingual-e5-large)', 'Rate': 0.014, 'Access': 'SQL + API', 'Dimensions': 1024},
+                {'Function': 'AI_EMBED (snowflake-arctic-embed-l-v2.0)', 'Rate': 0.014, 'Access': 'SQL + API', 'Dimensions': 1024},
+                {'Function': 'AI_EMBED (snowflake-arctic-embed-m-v2.0)', 'Rate': 0.014, 'Access': 'SQL + API', 'Dimensions': 768},
+                {'Function': 'EMBED_IMAGE_1024', 'Rate': 0.14, 'Access': 'SQL + API', 'Dimensions': 1024}
+            ])
+            
+            st.dataframe(
+                embedding_rates.style.format({'Rate': '{:.4f}'}),
+                use_container_width=True,
+                hide_index=True
+            )
+        
+        rates_data = pd.DataFrame([
+            {
+                'Service': 'AI Parse Document (Layout)',
+                'Rate': '3.33 credits per 1,000 pages',
+                'Access Method': 'SQL + API',
+                'Metric': 'Pages processed',
+                'Your Data': 'V_DOCUMENT_AI_DETAIL view'
+            },
+            {
+                'Service': 'AI Parse Document (OCR)',
+                'Rate': '0.5 credits per 1,000 pages',
+                'Access Method': 'SQL + API',
+                'Metric': 'Pages processed',
+                'Your Data': 'V_DOCUMENT_AI_DETAIL view'
+            },
+            {
+                'Service': 'Cortex Analyst',
+                'Rate': '67 credits per 1,000 messages (0.067/msg)',
+                'Access Method': 'API only',
+                'Metric': 'Messages/requests',
+                'Your Data': 'V_CORTEX_ANALYST_DETAIL view'
+            },
+            {
+                'Service': 'Cortex Search',
+                'Rate': '6.3 credits per GB/month',
+                'Access Method': 'SQL + API',
+                'Metric': 'Indexed data size',
+                'Your Data': 'V_CORTEX_SEARCH_DETAIL view'
+            },
+            {
+                'Service': 'AISQL Functions',
+                'Rate': 'Varies by model & tokens (see tabs above)',
+                'Access Method': 'SQL + API',
+                'Metric': 'Tokens processed',
+                'Your Data': 'V_AISQL_FUNCTION_SUMMARY view'
+            }
+        ])
+        
+        st.dataframe(
+            rates_data,
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        st.info("""
+        💡 **How to validate your costs:**
+        1. Check the "Historical Analysis" tab for actual credit consumption
+        2. Compare credits/operation ratios with rates above
+        3. For AISQL functions, check the "AISQL Functions" tab for per-token costs
+        4. If rates differ significantly, verify your ACCOUNT_USAGE data
+        """)
+        
+        st.warning("""
+        ⚠️ **Important Notes:**
+        - **Pricing applies to BOTH SQL functions AND REST API calls** (same rates)
+        - Rates shown are for Snowflake-managed compute
+        - AISQL function costs vary by model (claude, llama, mistral, etc.)
+        - Token-based pricing depends on input + output tokens
+        - Your actual costs reflect usage captured in ACCOUNT_USAGE views
+        - **REST API usage**: Total credits are tracked, but query-level details are only available for SQL functions
+        """)
+        
+        # Calculate actual rates from data if available
+        if not df.empty:
+            st.markdown("---")
+            st.markdown("**📊 Your Actual Consumption Rates (from ACCOUNT_USAGE)**")
+            
+            actual_rates = []
+            
+            for service in df['SERVICE_TYPE'].unique():
+                service_data = df[df['SERVICE_TYPE'] == service]
+                total_credits = service_data['TOTAL_CREDITS'].sum()
+                total_ops = service_data['TOTAL_OPERATIONS'].sum()
+                
+                if total_ops > 0:
+                    rate_per_op = total_credits / total_ops
+                    
+                    # Add service-specific context
+                    if 'Analyst' in service:
+                        expected = 0.067  # 0.067 credits per message
+                        display_rate = f'{rate_per_op:.4f} credits per message'
+                        metric = 'messages'
+                    elif 'Document' in service:
+                        rate_per_1000 = rate_per_op * 1000
+                        expected = 1.915  # Average of Layout (3.33) and OCR (0.5) per 1,000 pages
+                        display_rate = f'{rate_per_1000:.2f} credits per 1,000 pages'
+                        metric = 'pages'
+                    elif 'Search' in service:
+                        expected = None  # GB-based, different metric
+                        display_rate = f'{rate_per_op:.4f} credits per operation'
+                        metric = 'operations'
+                    else:
+                        expected = None
+                        display_rate = f'{rate_per_op:.4f} credits per operation'
+                        metric = 'operations'
+                    
+                    # Check if within range (±50% tolerance)
+                    if expected:
+                        actual_value = rate_per_op if 'Analyst' in service else rate_per_op * 1000
+                        within_range = abs(actual_value - expected) / expected < 0.5
+                        status = '✅ Within range' if within_range else '⚠️ Verify'
+                    else:
+                        status = '📊 No baseline'
+                    
+                    actual_rates.append({
+                        'Service': service,
+                        'Your Rate': display_rate,
+                        'Total Operations': f'{total_ops:,.0f}',
+                        'Total Credits': f'{total_credits:.4f}',
+                        'Status': status
+                    })
+            
+            if actual_rates:
+                actual_rates_df = pd.DataFrame(actual_rates)
+                st.dataframe(
+                    actual_rates_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                st.success("""
+                ✅ **Validation:** Your actual rates are calculated from ACCOUNT_USAGE data and represent real consumption. 
+                Differences from published rates may occur due to:
+                - Different models/configurations
+                - Mixed operation types (e.g., Layout vs OCR)
+                - Rounding in aggregated data
+                """)
+    
+    st.divider()
+    
+    # ========================================================================
+    # Cost Calculation Methodology
+    # ========================================================================
+    with st.expander("🧮 How We Calculate Your Costs (SQL vs API Usage)", expanded=False):
+        st.markdown("""
+        ### Calculation Methodology
+        
+        **Data Sources:**
+        - **Total Credits**: Captured from `ACCOUNT_USAGE` views (accurate for both SQL and API usage)
+        - **Query-Level Details**: Only available for SQL function calls via `CORTEX_FUNCTIONS_QUERY_USAGE_HISTORY`
+        - **REST API Calls**: Included in totals but without per-query breakdown
+        
+        **What This Means:**
+        """)
+        
+        comparison_data = pd.DataFrame([
+            {'Feature': 'Total credit consumption', 'SQL Functions': '✅ Tracked', 'REST API': '✅ Tracked'},
+            {'Feature': 'Per-query token counts', 'SQL Functions': '✅ Available', 'REST API': '❌ Not available'},
+            {'Feature': 'Model-level breakdown', 'SQL Functions': '✅ Available', 'REST API': '⚠️ Aggregated only'},
+            {'Feature': 'Cost per operation', 'SQL Functions': '✅ Precise', 'REST API': '⚠️ Estimated from hourly aggregates'}
+        ])
+        
+        st.dataframe(comparison_data, use_container_width=True, hide_index=True)
+        
+        st.markdown("""
+        **Impact on Projections:**
+        - If you use **primarily SQL functions**, projections will be very accurate
+        - If you use **REST APIs extensively**, projections are based on aggregated data and may vary
+        - **Total cost calculations are always accurate** regardless of access method
+        - Historical trends and growth projections remain reliable for planning purposes
+        
+        **Recommendation:** For the most detailed cost analysis, use SQL functions where possible. 
+        For REST API usage, focus on total credit consumption trends rather than per-request analysis.
+        
+        **Note:** The "AISQL Functions" tab shows query-level analysis which reflects SQL function usage only.
+        If you're using REST APIs, you'll see aggregated totals but not the same level of query detail.
+        """)
     
     # ========================================================================
     # Cost per User Calculator - MOVED TO TOP
@@ -528,26 +1184,30 @@ def show_cost_per_user_calculator(df, credit_cost):
     Shows: persona name, user count, requests per day, cost per request
     """
     
-    # Calculate historical baseline metrics from usage data  
-    df_with_30d = calculate_30day_totals(df)
+    # Calculate historical baseline metrics from usage data
+    # Use a more robust aggregation approach that handles sparse data better
     
-    # Get most recent 30-day totals for reference
-    if not df_with_30d.empty:
-        latest_30d = df_with_30d.groupby('SERVICE_TYPE').last().reset_index()
-        latest_30d['requests_per_day'] = latest_30d['operations_30d_total'] / 30
-        latest_30d['users_in_env'] = latest_30d['users_30d_avg']
-        latest_30d['cost_per_request'] = (latest_30d['credits_30d_total'] * credit_cost) / latest_30d['operations_30d_total']
-    else:
-        # Fallback if 30-day calculation fails
-        latest_30d = df.groupby('SERVICE_TYPE').agg({
-            'TOTAL_OPERATIONS': 'sum',
-            'DAILY_UNIQUE_USERS': 'mean',
-            'TOTAL_CREDITS': 'sum'
-        }).reset_index()
-        num_days = len(df['DATE'].unique())
-        latest_30d['requests_per_day'] = latest_30d['TOTAL_OPERATIONS'] / num_days if num_days > 0 else 0
-        latest_30d['users_in_env'] = latest_30d['DAILY_UNIQUE_USERS']
-        latest_30d['cost_per_request'] = (latest_30d['TOTAL_CREDITS'] * credit_cost) / latest_30d['TOTAL_OPERATIONS']
+    # Aggregate by service type across all available dates
+    latest_30d = df.groupby('SERVICE_TYPE').agg({
+        'TOTAL_OPERATIONS': 'sum',
+        'DAILY_UNIQUE_USERS': 'mean',
+        'TOTAL_CREDITS': 'sum',
+        'DATE': 'count'  # Count number of days with data
+    }).reset_index()
+    
+    # Rename DATE count to days_with_data for clarity
+    latest_30d.rename(columns={'DATE': 'days_with_data'}, inplace=True)
+    
+    # Calculate average requests per day based on actual days with data
+    latest_30d['requests_per_day'] = latest_30d['TOTAL_OPERATIONS'] / latest_30d['days_with_data']
+    latest_30d['users_in_env'] = latest_30d['DAILY_UNIQUE_USERS']
+    
+    # Calculate cost per request (handle division by zero)
+    latest_30d['cost_per_request'] = latest_30d.apply(
+        lambda row: (row['TOTAL_CREDITS'] * credit_cost) / row['TOTAL_OPERATIONS'] 
+        if row['TOTAL_OPERATIONS'] > 0 else 0, 
+        axis=1
+    )
     
     # ========================================================================
     # Historical Usage Reference Table - MOVED TO TOP AS GUIDE
@@ -555,12 +1215,62 @@ def show_cost_per_user_calculator(df, credit_cost):
     st.markdown("#### 📊 Historical Usage Reference (from your data)")
     st.caption("Use these metrics as a guide for your cost estimates below")
     
+    # Debug expander to show raw data and accuracy checks
+    with st.expander("🔍 Debug: View Raw Data & Accuracy Checks", expanded=False):
+        st.markdown("**📊 Latest Aggregated Data:**")
+        st.dataframe(latest_30d, use_container_width=True)
+        
+        st.markdown("---")
+        st.markdown("**✅ Accuracy Validation Checks:**")
+        
+        # Check 1: Cortex Analyst rate validation
+        analyst_data = latest_30d[latest_30d['SERVICE_TYPE'] == 'Cortex Analyst']
+        if not analyst_data.empty:
+            analyst_rate = analyst_data.iloc[0]['cost_per_request'] / credit_cost
+            expected_rate = 0.067
+            rate_diff_pct = abs((analyst_rate - expected_rate) / expected_rate * 100)
+            
+            if rate_diff_pct < 5:
+                st.success(f"✅ Cortex Analyst: {analyst_rate:.4f} credits/msg (Expected: {expected_rate}, Diff: {rate_diff_pct:.1f}%)")
+            elif rate_diff_pct < 20:
+                st.warning(f"⚠️ Cortex Analyst: {analyst_rate:.4f} credits/msg (Expected: {expected_rate}, Diff: {rate_diff_pct:.1f}%) - Within acceptable range")
+            else:
+                st.error(f"❌ Cortex Analyst: {analyst_rate:.4f} credits/msg (Expected: {expected_rate}, Diff: {rate_diff_pct:.1f}%) - Significant deviation!")
+        
+        # Check 2: Verify no division by zero issues
+        zero_ops = latest_30d[latest_30d['TOTAL_OPERATIONS'] == 0]
+        if not zero_ops.empty:
+            st.error(f"❌ Found {len(zero_ops)} service(s) with 0 operations: {', '.join(zero_ops['SERVICE_TYPE'].tolist())}")
+        else:
+            st.success("✅ All services have non-zero operations")
+        
+        # Check 3: Verify cost per request is reasonable
+        unreasonable_costs = latest_30d[latest_30d['cost_per_request'] > 10]  # Flag if >$10 per request
+        if not unreasonable_costs.empty:
+            st.warning(f"⚠️ Unusually high cost per request detected for: {', '.join(unreasonable_costs['SERVICE_TYPE'].tolist())}")
+        else:
+            st.success("✅ All cost per request values are in reasonable range")
+        
+        # Check 4: Data completeness
+        st.markdown("**📅 Data Completeness:**")
+        for _, row in latest_30d.iterrows():
+            days_pct = (row['days_with_data'] / 30) * 100
+            if days_pct < 30:
+                st.warning(f"⚠️ {row['SERVICE_TYPE']}: Only {row['days_with_data']} days of data ({days_pct:.0f}% of 30 days)")
+            else:
+                st.info(f"ℹ️ {row['SERVICE_TYPE']}: {row['days_with_data']} days of data ({days_pct:.0f}% coverage)")
+        
+        st.markdown("---")
+        st.markdown("**📋 Raw Input Data (Last 10 Rows):**")
+        st.dataframe(df.tail(10), use_container_width=True)
+    
     reference_table = []
     for _, service in latest_30d.iterrows():
         reference_table.append({
             'Service': service['SERVICE_TYPE'],
+            'Days of Data': int(service['days_with_data']),
             'Users in Environment': f"{service['users_in_env']:.0f}",
-            'Requests per Day': f"{service['requests_per_day']:,.0f}",
+            'Requests per Day': f"{service['requests_per_day']:,.1f}",
             'Cost per Request': f"${service['cost_per_request']:.6f}"
         })
     
@@ -639,13 +1349,27 @@ def show_cost_per_user_calculator(df, credit_cost):
     # ========================================================================
     st.markdown("#### 💵 Cost Estimates by Persona")
     
-    # Calculate weighted average cost per request across all services
-    total_ops = latest_30d['requests_per_day'].sum() * 30  # Monthly operations
-    total_cost_30d = sum(
-        (row['requests_per_day'] * 30 * row['cost_per_request']) 
-        for _, row in latest_30d.iterrows()
+    # Add toggle for rate source
+    use_official_rates = st.checkbox(
+        "Use official Snowflake rates (0.067 credits/message for Analyst)",
+        value=False,
+        help="Toggle between actual rates from your usage data vs official published rates"
     )
-    avg_cost_per_request = total_cost_30d / total_ops if total_ops > 0 else 0
+    
+    # Calculate cost per request based on user selection
+    if use_official_rates:
+        # Use official rate: 0.067 credits per message * credit_cost
+        avg_cost_per_request = 0.067 * credit_cost
+        st.info(f"📋 Using official rate: 0.067 credits/message = ${avg_cost_per_request:.6f} per request")
+    else:
+        # Calculate weighted average cost per request across all services from actual data
+        total_ops = latest_30d['requests_per_day'].sum() * 30  # Monthly operations
+        total_cost_30d = sum(
+            (row['requests_per_day'] * 30 * row['cost_per_request']) 
+            for _, row in latest_30d.iterrows()
+        )
+        avg_cost_per_request = total_cost_30d / total_ops if total_ops > 0 else 0
+        st.info(f"📊 Using actual observed rate from your data: ${avg_cost_per_request:.6f} per request")
     
     # Calculate costs for each persona
     persona_results = []
@@ -691,6 +1415,21 @@ def show_cost_per_user_calculator(df, credit_cost):
         st.metric("Avg Cost per User", f"${avg_cost_per_user:,.2f}")
     with col4:
         st.metric("Total Monthly Cost", f"${total_monthly_cost:,.2f}")
+    
+    # Quick accuracy check reminder
+    st.info(f"""
+    💡 **Quick Accuracy Check:**
+    - **Cortex Analyst** (Official Rate): 0.067 credits per message = ${0.067 * credit_cost:.4f} per request at ${credit_cost:.2f}/credit
+    - **Manual verification**: Total Monthly Cost = Total Users × Requests/Day × 30 days × Cost/Request
+    - **Toggle the checkbox above** to compare actual rates vs official Snowflake rates
+    - **Open the Debug expander** at the top to see detailed validation checks
+    
+    **Official Rates (Oct 31, 2025):**
+    - Cortex Analyst: 67 credits per 1,000 messages (0.067/msg)
+    - LLM models: Varies by model (0.1 - 75 credits per 1M tokens)
+    - Document AI Layout: 3.33 credits per 1,000 pages
+    - Document AI OCR: 0.5 credits per 1,000 pages
+    """)
 
 def show_summary_report(df, credit_cost, variance_pct):
     """Display summary report tab"""

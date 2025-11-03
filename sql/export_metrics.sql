@@ -1,8 +1,10 @@
 -- ============================================================================
--- Extract Metrics for Cost Calculator
+-- Extract Metrics for Cost Calculator v2.5
 -- ============================================================================
 -- Purpose: SE runs this in CUSTOMER'S Snowflake account to extract usage data
 -- Output: CSV file to upload into YOUR Streamlit calculator
+-- 
+-- v2.5 NEW: Added OPTION 3 for AISQL function-level data export
 -- ============================================================================
 
 -- INSTRUCTIONS FOR SOLUTION ENGINEERS:
@@ -50,6 +52,29 @@ SELECT
 FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_CORTEX_USAGE_HISTORY
 WHERE date >= DATEADD('day', -90, CURRENT_DATE())
 ORDER BY date DESC, total_credits DESC;
+*/
+
+-- ============================================================================
+-- Main Extraction Query - OPTION 3 (AISQL Functions - v2.5)
+-- ============================================================================
+-- Use V_AISQL_FUNCTION_SUMMARY for detailed AISQL function and model analysis
+-- Note: This is NEW in v2.5 and provides function-level granularity
+/*
+SELECT 
+    function_name,
+    model_name,
+    call_count,
+    ROUND(total_credits, 8) AS total_credits,
+    total_tokens,
+    ROUND(avg_credits_per_call, 8) AS avg_credits_per_call,
+    ROUND(avg_tokens_per_call, 2) AS avg_tokens_per_call,
+    ROUND(cost_per_million_tokens, 8) AS cost_per_million_tokens,
+    serverless_calls,
+    compute_calls,
+    first_usage,
+    last_usage
+FROM SNOWFLAKE_EXAMPLE.CORTEX_USAGE.V_AISQL_FUNCTION_SUMMARY
+ORDER BY total_credits DESC;
 */
 
 -- ============================================================================

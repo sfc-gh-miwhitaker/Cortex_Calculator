@@ -1,8 +1,10 @@
-# Snowflake Cortex Cost Calculator
+# Snowflake Cortex Cost Calculator v2.6
 
 **Monitor Cortex usage and forecast future costs with confidence.**
 
 A professional toolkit for tracking Snowflake Cortex service consumption and generating accurate cost projections. Perfect for Solutions Engineers during scoping exercises and for customers managing their AI workload budgets.
+
+**v2.6 Update (Nov 2024)**: Latest Cortex pricing + 5 new Snowflake monitoring features for query-level cost tracking, document processing analysis, and fine-tuning ROI.
 
 ---
 
@@ -13,6 +15,9 @@ A professional toolkit for tracking Snowflake Cortex service consumption and gen
 1. **Read:** [`help/GETTING_STARTED.md`](help/GETTING_STARTED.md) - Complete getting started guide (5 min read)
 2. **Deploy:** [`sql/deploy_cortex_monitoring.sql`](sql/deploy_cortex_monitoring.sql) - Deploy monitoring views (5 min)
 3. **Launch:** [Deploy cost calculator](#deploy-streamlit-calculator) - Follow Streamlit deployment guide (5 min)
+
+**What's New:** v2.6 adds query-level tracking, document processing analysis, and fine-tuning ROI  
+**Release Notes:** See [`docs/RELEASE_NOTES_v2.6.md`](docs/RELEASE_NOTES_v2.6.md) | **Changelog:** [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 
 Takes 15 minutes total from zero to working calculator.
 
@@ -38,10 +43,15 @@ Takes 15 minutes total from zero to working calculator.
 - **Initial Setup:** < 5 minutes
 - **Per-Customer Analysis:** 5-10 minutes
 
-### What You Get (v2.0)
-- ✅ **10 monitoring views** tracking all Cortex services
-- ✅ **Serverless task** (automatic daily snapshots, no warehouse needed)
-- ✅ **Snapshot table** for 4-5x faster queries
+### What You Get (v2.6)
+- ✅ **16 monitoring views** tracking all Cortex services (up from 13 in v2.5)
+- ✅ **Query-level cost tracking** - identify expensive queries (NEW in v2.6)
+- ✅ **Document processing analysis** - compare PARSE_DOCUMENT vs Document AI (NEW in v2.6)
+- ✅ **Fine-tuning ROI tracking** - separate training vs inference costs (NEW in v2.6)
+- ✅ **Cortex Search optimization** - hourly cost tracking to find idle periods (NEW in v2.6)
+- ✅ **Latest pricing** - Oct 31, 2025 rates for all 19 LLM models (NEW in v2.6)
+- ✅ **Serverless task** - automatic daily snapshots, no warehouse needed
+- ✅ **Snapshot table** - 4-5x faster queries
 - ✅ **Simplified Cost per User Calculator** for quick scoping
 - ✅ **30-day rolling totals** for accurate estimates
 - ✅ **Smart data fallback** - works immediately after deployment
@@ -100,7 +110,7 @@ Takes 15 minutes total from zero to working calculator.
 **What this creates:**
 - Database: `SNOWFLAKE_EXAMPLE`
 - Schema: `CORTEX_USAGE`
-- 10 monitoring views tracking all Cortex usage
+- 16 monitoring views tracking all Cortex usage (v2.6)
 - 1 snapshot table for historical tracking
 - 1 serverless task (runs daily at 3 AM)
 
